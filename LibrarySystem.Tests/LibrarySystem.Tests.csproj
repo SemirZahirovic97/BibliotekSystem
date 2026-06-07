@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -17,6 +17,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\LibrarySystem.Core\LibrarySystem.Core.csproj" />
+    <ProjectReference Include="..\LibrarySystem.Data\LibrarySystem.Data.csproj" />
     <ProjectReference Include="..\LibrarySystem\LibrarySystem.csproj" />
   </ItemGroup>
 
