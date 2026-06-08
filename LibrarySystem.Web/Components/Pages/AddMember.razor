@@ -1,0 +1,50 @@
+﻿@page "/members/add"
+@using LibrarySystem.Core
+@using LibrarySystem.Data
+@inject IMemberRepository MemberRepository
+@inject NavigationManager NavigationManager
+
+<PageTitle>Lägg till medlem</PageTitle>
+
+<h1>Lägg till medlem</h1>
+
+<div class="card">
+    <div class="card-body">
+        <EditForm Model="@newMember" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <label class="form-label">Medlems-ID</label>
+                <InputText class="form-control" @bind-Value="newMember.MemberId" />
+                <ValidationMessage For="@(() => newMember.MemberId)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Namn</label>
+                <InputText class="form-control" @bind-Value="newMember.Name" />
+                <ValidationMessage For="@(() => newMember.Name)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <InputText class="form-control" @bind-Value="newMember.Email" />
+                <ValidationMessage For="@(() => newMember.Email)" />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Spara</button>
+            <a href="members" class="btn btn-secondary ms-2">Avbryt</a>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private Member newMember = new Member();
+
+    private async Task HandleSubmit()
+    {
+        await MemberRepository.AddAsync(newMember);
+        NavigationManager.NavigateTo("/members");
+    }
+}
+}

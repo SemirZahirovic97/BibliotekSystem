@@ -1,0 +1,61 @@
+﻿@page "/members"
+@using LibrarySystem.Core
+@using LibrarySystem.Data
+@inject IMemberRepository MemberRepository
+@inject NavigationManager NavigationManager
+
+<PageTitle>Medlemmar</PageTitle>
+
+<h1>Medlemmar</h1>
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <a href="members/add" class="btn btn-primary">Lägg till medlem</a>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <p>Laddar medlemmar...</p>
+}
+else if (!members.Any())
+{
+    <p>Inga medlemmar hittades.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Medlems-ID</th>
+                <th>Namn</th>
+                <th>Email</th>
+                <th>Medlem sedan</th>
+                <th>Aktiva lån</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var member in members)
+            {
+                <tr>
+                    <td>@member.MemberId</td>
+                    <td>@member.Name</td>
+                    <td>@member.Email</td>
+                    <td>@member.MemberSince.ToString("yyyy-MM-dd")</td>
+                    <td>@member.Loans.Count(l => l.ReturnDate == null)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IEnumerable<Member> members = new List<Member>();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        members = await MemberRepository.GetAllAsync();
+        isLoading = false;
+    }
+}

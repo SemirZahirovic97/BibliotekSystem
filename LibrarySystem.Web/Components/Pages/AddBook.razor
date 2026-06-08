@@ -1,0 +1,55 @@
+﻿@page "/books/add"
+@using LibrarySystem.Core
+@using LibrarySystem.Data
+@inject IBookRepository BookRepository
+@inject NavigationManager NavigationManager
+
+<PageTitle>Lägg till bok</PageTitle>
+
+<h1>Lägg till bok</h1>
+
+<div class="card">
+    <div class="card-body">
+        <EditForm Model="@newBook" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <label class="form-label">ISBN</label>
+                <InputText class="form-control" @bind-Value="newBook.ISBN" />
+                <ValidationMessage For="@(() => newBook.ISBN)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Titel</label>
+                <InputText class="form-control" @bind-Value="newBook.Title" />
+                <ValidationMessage For="@(() => newBook.Title)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Författare</label>
+                <InputText class="form-control" @bind-Value="newBook.Author" />
+                <ValidationMessage For="@(() => newBook.Author)" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Utgivningsår</label>
+                <InputNumber class="form-control" @bind-Value="newBook.PublishedYear" />
+                <ValidationMessage For="@(() => newBook.PublishedYear)" />
+            </div>
+
+            <button type="submit" class="btn btn-primary">Spara</button>
+            <a href="books" class="btn btn-secondary ms-2">Avbryt</a>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private Book newBook = new Book();
+
+    private async Task HandleSubmit()
+    {
+        await BookRepository.AddAsync(newBook);
+        NavigationManager.NavigateTo("/books");
+    }
+}

@@ -1,0 +1,87 @@
+﻿@page "/books"
+@using LibrarySystem.Core
+@using LibrarySystem.Data
+@inject IBookRepository BookRepository
+@inject NavigationManager NavigationManager
+
+<PageTitle>Böcker</PageTitle>
+
+<h1>Böcker</h1>
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <input type="text" class="form-control" placeholder="Sök på titel, författare eller ISBN..."
+               @bind="searchTerm" @bind:event="oninput" @onkeyup="SearchBooks" />
+    </div>
+    <div class="col-md-6">
+        <a href="books/add" class="btn btn-primary">Lägg till bok</a>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <p>Laddar böcker...</p>
+}
+else if (!books.Any())
+{
+    <p>Inga böcker hittades.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ISBN</th>
+                <th>Titel</th>
+                <th>Författare</th>
+                <th>År</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var book in books)
+            {
+                <tr>
+                    <td>@book.ISBN</td>
+                    <td>@book.Title</td>
+                    <td>@book.Author</td>
+                    <td>@book.PublishedYear</td>
+                    <td>
+                        @if (book.IsAvailable)
+                        {
+                            <span class="badge bg-success">Tillgänglig</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger">Utlånad</span>
+                        }
+                    </td>
+                    <td>
+                        <a href="books/@book.Id" class="btn btn-sm btn-info">Detaljer</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IEnumerable<Book> books = new List<Book>();
+    private string searchTerm = string.Empty;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        books = await BookRepository.GetAllAsync();
+        isLoading = false;
+    }
+
+    private async Task SearchBooks()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+            books = await BookRepository.GetAllAsync();
+        else
+            books = await BookRepository.SearchAsync(searchTerm);
+    }
+}

@@ -1,0 +1,18 @@
+﻿@using LibrarySystem.Core
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title">@Member.Name</h5>
+        <p class="card-text"><strong>Medlems-ID:</strong> @Member.MemberId</p>
+        <p class="card-text"><strong>Email:</strong> @Member.Email</p>
+        <p class="card-text"><strong>Medlem sedan:</strong> @Member.MemberSince.ToString("yyyy-MM-dd")</p>
+        <span class="badge bg-info">
+            Aktiva lån: @Member.Loans.Count(l => l.ReturnDate == null)
+        </span>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Member Member { get; set; } = default!;
+}

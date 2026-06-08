@@ -1,0 +1,18 @@
+﻿@using LibrarySystem.Core
+
+<div class="card mb-3 @(Loan.IsOverdue ? "border-danger" : "border-success")">
+    <div class="card-body">
+        <h5 class="card-title">@Loan.Book.Title</h5>
+        <p class="card-text"><strong>Lånad av:</strong> @Loan.Member.Name</p>
+        <p class="card-text"><strong>Lånedatum:</strong> @Loan.LoanDate.ToString("yyyy-MM-dd")</p>
+        <p class="card-text"><strong>Förfallodatum:</strong> @Loan.DueDate.ToString("yyyy-MM-dd")</p>
+        <span class="badge @(Loan.IsOverdue ? "bg-danger" : "bg-success")">
+            @(Loan.IsOverdue ? "Försenad" : "Aktiv")
+        </span>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Loan Loan { get; set; } = default!;
+}

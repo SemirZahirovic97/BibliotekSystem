@@ -1,7 +1,69 @@
 ﻿@page "/"
+@using LibrarySystem.Data
+@inject IBookRepository BookRepository
+@inject IMemberRepository MemberRepository
+@inject ILoanRepository LoanRepository
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Bibliotekssystem</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>Välkommen till Bibliotekssystemet</h1>
 
-Welcome to your new app.
+@if (isLoading)
+{
+    <p>Laddar...</p>
+}
+else
+{
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card text-white bg-primary mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Böcker</h5>
+                    <p class="card-text display-4">@totalBooks</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Medlemmar</h5>
+                    <p class="card-text display-4">@totalMembers</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-warning mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">Aktiva lån</h5>
+                    <p class="card-text display-4">@activeLoans</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a href="books" class="btn btn-primary me-2">Visa böcker</a>
+        <a href="members" class="btn btn-success me-2">Visa medlemmar</a>
+        <a href="loans" class="btn btn-warning">Visa lån</a>
+    </div>
+}
+
+@code {
+    private int totalBooks;
+    private int totalMembers;
+    private int activeLoans;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var books = await BookRepository.GetAllAsync();
+        var members = await MemberRepository.GetAllAsync();
+        var loans = await LoanRepository.GetActiveLoansAsync();
+
+        totalBooks = books.Count();
+        totalMembers = members.Count();
+        activeLoans = loans.Count();
+
+        isLoading = false;
+    }
+}

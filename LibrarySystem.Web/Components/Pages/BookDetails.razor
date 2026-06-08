@@ -1,0 +1,99 @@
+﻿@page "/books/{id:int}"
+@using LibrarySystem.Core
+@using LibrarySystem.Data
+@inject IBookRepository BookRepository
+@inject ILoanRepository LoanRepository
+@inject NavigationManager NavigationManager
+
+<PageTitle>Bokdetaljer</PageTitle>
+
+@if (isLoading)
+{
+    <p>Laddar...</p>
+}
+else if (book == null)
+{
+    <p>Boken hittades inte.</p>
+    <a href="books" class="btn btn-secondary">Tillbaka</a>
+}
+else
+{
+    <h1>@book.Title</h1>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <p><strong>ISBN:</strong> @book.ISBN</p>
+            <p><strong>Författare:</strong> @book.Author</p>
+            <p><strong>Utgivningsår:</strong> @book.PublishedYear</p>
+            <p>
+                <strong>Status:</strong>
+                @if (book.IsAvailable)
+                {
+                    <span class="badge bg-success">Tillgänglig</span>
+                }
+                else
+                {
+                    <span class="badge bg-danger">Utlånad</span>
+                }
+            </p>
+        </div>
+    </div>
+
+    <h3>Lånehistorik</h3>
+    @if (!loans.Any())
+    {
+        <p>Inga lån registrerade för denna bok.</p>
+    }
+    else
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Medlem</th>
+                    <th>Lånedatum</th>
+                    <th>Förfallodatum</th>
+                    <th>Återlämnad</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var loan in loans)
+                {
+                    <tr>
+                        <td>@loan.Member.Name</td>
+                        <td>@loan.LoanDate.ToString("yyyy-MM-dd")</td>
+                        <td>@loan.DueDate.ToString("yyyy-MM-dd")</td>
+                        <td>
+                            @if (loan.IsReturned)
+                            {
+                                @loan.ReturnDate!.Value.ToString("yyyy-MM-dd")
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning">Ej återlämnad</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    <a href="books" class="btn btn-secondary mt-3">Tillbaka</a>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Book? book;
+    private IEnumerable<Loan> loans = new List<Loan>();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        book = await BookRepository.GetByIdAsync(Id);
+        if (book != null)
+            loans = await LoanRepository.GetAllAsync();
+        isLoading = false;
+    }
+}

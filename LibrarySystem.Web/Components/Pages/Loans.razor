@@ -1,0 +1,170 @@
+﻿@page "/loans"
+@using LibrarySystem.Core
+@using LibrarySystem.Data
+@inject ILoanRepository LoanRepository
+@inject IBookRepository BookRepository
+@inject IMemberRepository MemberRepository
+@inject NavigationManager NavigationManager
+
+<PageTitle>Lån</PageTitle>
+
+<h1>Lån</h1>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h4>Skapa nytt lån</h4>
+    </div>
+    <div class="card-body">
+        <EditForm Model="@newLoan" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <label class="form-label">Välj bok</label>
+                <InputSelect class="form-control" @bind-Value="selectedBookId">
+                    <option value="0">-- Välj bok --</option>
+                    @foreach (var book in availableBooks)
+                    {
+                        <option value="@book.Id">@book.Title (@book.ISBN)</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Välj medlem</label>
+                <InputSelect class="form-control" @bind-Value="selectedMemberId">
+                    <option value="0">-- Välj medlem --</option>
+                    @foreach (var member in members)
+                    {
+                        <option value="@member.Id">@member.Name (@member.MemberId)</option>
+                    }
+                </InputSelect>
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">@errorMessage</div>
+            }
+
+            <button type="submit" class="btn btn-primary">Skapa lån</button>
+        </EditForm>
+    </div>
+</div>
+
+<h3>Aktiva lån</h3>
+
+@if (isLoading)
+{
+    <p>Laddar lån...</p>
+}
+else if (!activeLoans.Any())
+{
+    <p>Inga aktiva lån.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Bok</th>
+                <th>Medlem</th>
+                <th>Lånedatum</th>
+                <th>Förfallodatum</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var loan in activeLoans)
+            {
+                <tr class="@(loan.IsOverdue ? "table-danger" : "")">
+                    <td>@loan.Book.Title</td>
+                    <td>@loan.Member.Name</td>
+                    <td>@loan.LoanDate.ToString("yyyy-MM-dd")</td>
+                    <td>@loan.DueDate.ToString("yyyy-MM-dd")</td>
+                    <td>
+                        @if (loan.IsOverdue)
+                        {
+                            <span class="badge bg-danger">Försenad</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">Aktiv</span>
+                        }
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" @onclick="() => ReturnBook(loan)">
+                            Returnera
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IEnumerable<Loan> activeLoans = new List<Loan>();
+    private IEnumerable<Book> availableBooks = new List<Book>();
+    private IEnumerable<Member> members = new List<Member>();
+    private Loan newLoan = new Loan();
+    private int selectedBookId;
+    private int selectedMemberId;
+    private string errorMessage = string.Empty;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        activeLoans = await LoanRepository.GetActiveLoansAsync();
+        availableBooks = (await BookRepository.GetAllAsync()).Where(b => b.IsAvailable);
+        members = await MemberRepository.GetAllAsync();
+        isLoading = false;
+    }
+
+    private async Task HandleSubmit()
+    {
+        errorMessage = string.Empty;
+
+        if (selectedBookId == 0 || selectedMemberId == 0)
+        {
+            errorMessage = "Välj både bok och medlem.";
+            return;
+        }
+
+        var book = await BookRepository.GetByIdAsync(selectedBookId);
+        var member = await MemberRepository.GetByIdAsync(selectedMemberId);
+
+        if (book == null || member == null)
+        {
+            errorMessage = "Boken eller medlemmen hittades inte.";
+            return;
+        }
+
+        var loan = new Loan(book, member, DateTime.Now, DateTime.Now.AddDays(14));
+        book.IsAvailable = false;
+
+        await LoanRepository.AddAsync(loan);
+        await BookRepository.UpdateAsync(book);
+
+        selectedBookId = 0;
+        selectedMemberId = 0;
+
+        await LoadData();
+    }
+
+    private async Task ReturnBook(Loan loan)
+    {
+        loan.Return();
+        loan.Book.IsAvailable = true;
+
+        await LoanRepository.UpdateAsync(loan);
+        await BookRepository.UpdateAsync(loan.Book);
+
+        await LoadData();
+    }
+}
