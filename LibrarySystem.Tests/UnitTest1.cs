@@ -1,168 +1,241 @@
-using LibrarySystem;
+using LibrarySystem.Core;
+using LibrarySystem.Data;
+using Microsoft.EntityFrameworkCore;
+using Book = LibrarySystem.Core.Book;
+using Member = LibrarySystem.Core.Member;
+using Loan = LibrarySystem.Core.Loan;
 
 namespace LibrarySystem.Tests
 {
-    public class BookTests
+    public class BookRepositoryTests
     {
-        [Fact]
-        public void Constructor_ShouldSetPropertiesCorrectly()
+        private LibraryContext CreateContext(string dbName)
         {
-            // Arrange & Act
-            var book = new Book("978-91-0-012345-6", "Testbok", "Testförfattare", 2024);
+            var options = new DbContextOptionsBuilder<LibraryContext>()
+                .UseInMemoryDatabase(databaseName: dbName)
+                .Options;
+            return new LibraryContext(options);
+        }
+
+        [Fact]
+        public async Task AddAsync_ShouldSaveBookToDatabase()
+        {
+            // Arrange
+            using var context = CreateContext("AddBook");
+            var repository = new BookRepository(context);
+            var book = new Book("123", "Testbok", "Testförfattare", 2024);
+
+            // Act
+            await repository.AddAsync(book);
 
             // Assert
-            Assert.Equal("978-91-0-012345-6", book.ISBN);
+            var savedBook = await context.Books.FirstOrDefaultAsync(b => b.ISBN == "123");
+            Assert.NotNull(savedBook);
+            Assert.Equal("Testbok", savedBook.Title);
+        }
+
+        [Fact]
+        public async Task GetAllAsync_ShouldReturnAllBooks()
+        {
+            // Arrange
+            using var context = CreateContext("GetAllBooks");
+            var repository = new BookRepository(context);
+            await repository.AddAsync(new Book("123", "Bok 1", "Författare 1", 2020));
+            await repository.AddAsync(new Book("456", "Bok 2", "Författare 2", 2021));
+
+            // Act
+            var result = await repository.GetAllAsync();
+
+            // Assert
+            Assert.Equal(2, result.Count());
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_ShouldReturnCorrectBook()
+        {
+            // Arrange
+            using var context = CreateContext("GetById");
+            var repository = new BookRepository(context);
+            await repository.AddAsync(new Book("123", "Testbok", "Testförfattare", 2024));
+
+            // Act
+            var book = await repository.GetByIdAsync(1);
+
+            // Assert
+            Assert.NotNull(book);
             Assert.Equal("Testbok", book.Title);
-            Assert.Equal("Testförfattare", book.Author);
-            Assert.Equal(2024, book.PublishedYear);
         }
 
         [Fact]
-        public void IsAvailable_ShouldBeTrueForNewBook()
-        {
-            // Arrange & Act
-            var book = new Book("123", "Testbok", "Testförfattare", 2024);
-
-            // Assert
-            Assert.True(book.IsAvailable);
-        }
-
-        [Fact]
-        public void GetInfo_ShouldReturnFormattedString()
+        public async Task SearchAsync_ShouldFindBooksByTitle()
         {
             // Arrange
-            var book = new Book("123", "Testbok", "Testförfattare", 2024);
+            using var context = CreateContext("SearchBooks");
+            var repository = new BookRepository(context);
+            await repository.AddAsync(new Book("123", "Sagan om ringen", "Tolkien", 1954));
+            await repository.AddAsync(new Book("456", "Hobbiten", "Tolkien", 1937));
 
             // Act
-            var result = book.GetInfo();
+            var result = await repository.SearchAsync("sagan");
 
             // Assert
-            Assert.Contains("Testbok", result);
-            Assert.Contains("Testförfattare", result);
-            Assert.Contains("2024", result);
+            Assert.Single(result);
+            Assert.Equal("Sagan om ringen", result.First().Title);
+        }
+
+        [Fact]
+        public async Task DeleteAsync_ShouldRemoveBook()
+        {
+            // Arrange
+            using var context = CreateContext("DeleteBook");
+            var repository = new BookRepository(context);
+            await repository.AddAsync(new Book("123", "Testbok", "Testförfattare", 2024));
+
+            // Act
+            await repository.DeleteAsync(1);
+
+            // Assert
+            var result = await repository.GetAllAsync();
+            Assert.Empty(result);
+        }
+
+        [Fact]
+        public async Task UpdateAsync_ShouldUpdateBook()
+        {
+            // Arrange
+            using var context = CreateContext("UpdateBook");
+            var repository = new BookRepository(context);
+            await repository.AddAsync(new Book("123", "Gammal titel", "Testförfattare", 2024));
+            var book = await repository.GetByIdAsync(1);
+
+            // Act
+            book!.Title = "Ny titel";
+            await repository.UpdateAsync(book);
+
+            // Assert
+            var updated = await repository.GetByIdAsync(1);
+            Assert.Equal("Ny titel", updated!.Title);
         }
     }
 
-    public class LoanTests
+    public class MemberRepositoryTests
     {
-        [Fact]
-        public void IsOverdue_ShouldReturnFalse_WhenDueDateIsInFuture()
+        private LibraryContext CreateContext(string dbName)
         {
-            // Arrange
-            var book = new Book("123", "Test", "Author", 2024);
-            var member = new Member("M001", "Test Person", "test@test.com");
-            var loan = new Loan(book, member, DateTime.Now, DateTime.Now.AddDays(14));
-
-            // Act & Assert
-            Assert.False(loan.IsOverdue);
+            var options = new DbContextOptionsBuilder<LibraryContext>()
+                .UseInMemoryDatabase(databaseName: dbName)
+                .Options;
+            return new LibraryContext(options);
         }
 
         [Fact]
-        public void IsOverdue_ShouldReturnTrue_WhenDueDateHasPassed()
+        public async Task AddAsync_ShouldSaveMemberToDatabase()
         {
             // Arrange
-            var book = new Book("123", "Test", "Author", 2024);
-            var member = new Member("M001", "Test Person", "test@test.com");
-            var loan = new Loan(book, member, DateTime.Now.AddDays(-20), DateTime.Now.AddDays(-6));
+            using var context = CreateContext("AddMember");
+            var repository = new MemberRepository(context);
+            var member = new Member("M001", "Anna Andersson", "anna@test.com");
 
-            // Act & Assert
-            Assert.True(loan.IsOverdue);
+            // Act
+            await repository.AddAsync(member);
+
+            // Assert
+            var savedMember = await context.Members.FirstOrDefaultAsync(m => m.MemberId == "M001");
+            Assert.NotNull(savedMember);
+            Assert.Equal("Anna Andersson", savedMember.Name);
         }
 
         [Fact]
-        public void IsReturned_ShouldReturnTrue_WhenReturnDateIsSet()
+        public async Task GetAllAsync_ShouldReturnAllMembers()
         {
             // Arrange
-            var book = new Book("123", "Test", "Author", 2024);
-            var member = new Member("M001", "Test Person", "test@test.com");
+            using var context = CreateContext("GetAllMembers");
+            var repository = new MemberRepository(context);
+            await repository.AddAsync(new Member("M001", "Anna", "anna@test.com"));
+            await repository.AddAsync(new Member("M002", "Erik", "erik@test.com"));
+
+            // Act
+            var result = await repository.GetAllAsync();
+
+            // Assert
+            Assert.Equal(2, result.Count());
+        }
+
+        [Fact]
+        public async Task GetByIdAsync_ShouldReturnCorrectMember()
+        {
+            // Arrange
+            using var context = CreateContext("GetMemberById");
+            var repository = new MemberRepository(context);
+            await repository.AddAsync(new Member("M001", "Anna", "anna@test.com"));
+
+            // Act
+            var member = await repository.GetByIdAsync(1);
+
+            // Assert
+            Assert.NotNull(member);
+            Assert.Equal("Anna", member.Name);
+        }
+    }
+
+    public class LoanRepositoryTests
+    {
+        private LibraryContext CreateContext(string dbName)
+        {
+            var options = new DbContextOptionsBuilder<LibraryContext>()
+                .UseInMemoryDatabase(databaseName: dbName)
+                .Options;
+            return new LibraryContext(options);
+        }
+
+        [Fact]
+        public async Task AddAsync_ShouldSaveLoanToDatabase()
+        {
+            // Arrange
+            using var context = CreateContext("AddLoan");
+            var bookRepo = new BookRepository(context);
+            var memberRepo = new MemberRepository(context);
+            var loanRepo = new LoanRepository(context);
+
+            var book = new Book("123", "Testbok", "Testförfattare", 2024);
+            var member = new Member("M001", "Anna", "anna@test.com");
+            await bookRepo.AddAsync(book);
+            await memberRepo.AddAsync(member);
+
             var loan = new Loan(book, member, DateTime.Now, DateTime.Now.AddDays(14));
 
             // Act
+            await loanRepo.AddAsync(loan);
+
+            // Assert
+            var activeLoans = await loanRepo.GetActiveLoansAsync();
+            Assert.Single(activeLoans);
+        }
+
+        [Fact]
+        public async Task GetActiveLoansAsync_ShouldOnlyReturnActiveLoans()
+        {
+            // Arrange
+            using var context = CreateContext("ActiveLoans");
+            var bookRepo = new BookRepository(context);
+            var memberRepo = new MemberRepository(context);
+            var loanRepo = new LoanRepository(context);
+
+            var book = new Book("123", "Testbok", "Testförfattare", 2024);
+            var member = new Member("M001", "Anna", "anna@test.com");
+            await bookRepo.AddAsync(book);
+            await memberRepo.AddAsync(member);
+
+            var loan = new Loan(book, member, DateTime.Now, DateTime.Now.AddDays(14));
+            await loanRepo.AddAsync(loan);
             loan.Return();
-
-            // Assert
-            Assert.True(loan.IsReturned);
-        }
-    }
-
-    public class SearchTests
-    {
-        [Theory]
-        [InlineData("Tolkien", true)]
-        [InlineData("tolkien", true)]
-        [InlineData("Rowling", false)]
-        public void Book_Matches_ShouldFindByAuthor(string searchTerm, bool expected)
-        {
-            // Arrange
-            var book = new Book("123", "Sagan om ringen", "J.R.R. Tolkien", 1954);
+            await loanRepo.UpdateAsync(loan);
 
             // Act
-            var result = book.Matches(searchTerm);
+            var activeLoans = await loanRepo.GetActiveLoansAsync();
 
             // Assert
-            Assert.Equal(expected, result);
-        }
-
-        [Theory]
-        [InlineData("Sagan", true)]
-        [InlineData("sagan", true)]
-        [InlineData("Harry Potter", false)]
-        public void Book_Matches_ShouldFindByTitle(string searchTerm, bool expected)
-        {
-            // Arrange
-            var book = new Book("123", "Sagan om ringen", "J.R.R. Tolkien", 1954);
-
-            // Act
-            var result = book.Matches(searchTerm);
-
-            // Assert
-            Assert.Equal(expected, result);
-        }
-    }
-
-    public class LibraryStatisticsTests
-    {
-        [Fact]
-        public void GetTotalBooks_ShouldReturnCorrectCount()
-        {
-            // Arrange
-            var library = new Library();
-            library.AddBook(new Book("123", "Bok 1", "Författare 1", 2020));
-            library.AddBook(new Book("456", "Bok 2", "Författare 2", 2021));
-            library.AddBook(new Book("789", "Bok 3", "Författare 3", 2022));
-
-            // Act
-            var result = library.GetAllBooks().Count;
-
-            // Assert
-            Assert.Equal(3, result);
-        }
-
-        [Fact]
-        public void GetMostActiveBorrower_ShouldReturnMemberWithMostLoans()
-        {
-            // Arrange
-            var library = new Library();
-            var book1 = new Book("123", "Bok 1", "Författare 1", 2020);
-            var book2 = new Book("456", "Bok 2", "Författare 2", 2021);
-            var member1 = new Member("M001", "Anna", "anna@test.com");
-            var member2 = new Member("M002", "Erik", "erik@test.com");
-
-            library.AddBook(book1);
-            library.AddBook(book2);
-            library.AddMember(member1);
-            library.AddMember(member2);
-
-            library.BorrowBook("123", "M001");
-            library.BorrowBook("456", "M001");
-
-            // Act
-            var result = library.GetAllMembers()
-                .OrderByDescending(m => m.GetBorrowedBooks().Count)
-                .FirstOrDefault();
-
-            // Assert
-            Assert.Equal("Anna", result?.Name);
+            Assert.Empty(activeLoans);
         }
     }
 }
